@@ -1,0 +1,19 @@
+[package]
+name = "prevent_drop"
+version = "0.1.0"
+authors = ["Mick van Gelderen <mickvangelderen@gmail.com>"]
+license = "MIT OR Apache-2.0"
+description = "Prevent drop from being called for a type."
+homepage = "https://github.com/mickvangelderen/prevent_drop"
+repository = "https://github.com/mickvangelderen/prevent_drop"
+readme = "README.md"
+keywords = ["prevent", "drop", "compile-time", "static"]
+categories = ["rust-patterns"]
+build = "build.rs"
+
+[features]
+default = []
+abort = []
+
+[profile.test]
+opt-level = 1
