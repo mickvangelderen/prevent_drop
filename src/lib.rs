@@ -217,7 +217,7 @@ macro_rules! prevent_drop {
 #[macro_export]
 macro_rules! prevent_drop {
     ($T:ty, $label:ident) => {
-        prevent_drop_panic!($T, $label);
+        prevent_drop_panic!($T);
     };
 }
 
