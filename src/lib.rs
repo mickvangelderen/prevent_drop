@@ -165,7 +165,7 @@ macro_rules! prevent_drop_panic {
     };
 }
 
-#[cfg(all(not(abort), not(panic), opt_level_gt_0))]
+#[cfg(all(not(feature = "abort"), not(feature = "panic"), opt_level_gt_0))]
 #[macro_export]
 macro_rules! prevent_drop {
     ($T:ty, $label:ident) => {
@@ -173,7 +173,7 @@ macro_rules! prevent_drop {
     };
 }
 
-#[cfg(all(not(abort), not(panic), not(opt_level_gt_0)))]
+#[cfg(all(not(feature = "abort"), not(feature = "panic"), not(opt_level_gt_0)))]
 #[macro_export]
 macro_rules! prevent_drop {
     ($T:ty, $label:ident) => {
@@ -181,7 +181,7 @@ macro_rules! prevent_drop {
     };
 }
 
-#[cfg(all(abort, not(panic)))]
+#[cfg(all(feature = "abort", not(feature = "panic")))]
 #[macro_export]
 macro_rules! prevent_drop {
     ($T:ty, $label:ident) => {
@@ -189,7 +189,7 @@ macro_rules! prevent_drop {
     };
 }
 
-#[cfg(all(not(abort), panic))]
+#[cfg(all(not(feature = "abort"), feature = "panic"))]
 #[macro_export]
 macro_rules! prevent_drop {
     ($T:ty, $label:ident) => {
@@ -197,7 +197,7 @@ macro_rules! prevent_drop {
     };
 }
 
-#[cfg(all(abort, panic))]
+#[cfg(all(feature = "abort", feature = "panic"))]
 compile_error!("You cannot use both the abort and the panic strategies at the same time. Choose one or the other.");
 
 #[cfg(test)]
