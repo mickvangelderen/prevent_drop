@@ -1,5 +1,3 @@
-//! A macro to prevent value of a type from being implicitly dropped.
-//!
 //! At the time of writing the only way to ensure some cleanup code is
 //! run is by implementing Drop. Drop has some limitations however: you
 //! can't pass extra arguments or report errors from it. Even the
@@ -24,9 +22,9 @@
 //! 2018\. For now the `prevent_drop!` macro allows you to detect if a
 //! value would be dropped at compile time if and only if the compiler
 //! optimization elides the drop function call. This means that you have
-//! to enable optimizations for it to work. Unfortunately, sometimes it
-//! is simply impossible for the compiler to remove the drop calls which
-//! means `prevent_drop` will report a false positive. Try to
+//! to enable optimizations for it to work. Unfortunately, if the
+//! compiler is unable to prove a drop call can be elided when in theory
+//! it could be, `prevent_drop` will report a false positive. Try to
 //! restructure your code so you can take ownership of the values that
 //! you are dropping. Alternatively, consider falling back to a run-time
 //! check.
@@ -97,7 +95,8 @@
 //!
 //! Alternatively, you can enable the either the `abort` or the `panic`
 //! feature. Like the names suggest this will make `prevent_drop!` use
-//! `prevent_drop_abort!` or `prevent_drop_panic!` respectively. To set the strategy to panic for example, edit your `Cargo.toml` like this:
+//! `prevent_drop_abort!` or `prevent_drop_panic!` respectively. To set
+//! the strategy to panic for example, edit your `Cargo.toml` like this:
 //!
 //! ```ignore
 //! [dependencies.prevent_drop]
@@ -105,13 +104,21 @@
 //! features = ["panic"]
 //! ```
 //!
-//! This can be useful to figure out where drop is being called through
-//! debugging. It does mean you need to figure out how to get your
-//! application to actually perform the drop.
+//! Review the documentation for the different prevent_drop strategies
+//! for advice on when to use which one.
 
 #![doc(html_root_url = "https://docs.rs/prevent_drop")]
 #![deny(missing_docs)]
 #![cfg_attr(test, deny(warnings))]
+
+/// This is the default strategy. It declares an `extern` function that
+/// should not have an implementation, causing the linker to emit an
+/// error. Either `std::mem::ManuallyDrop` or `std::mem::forget` can be
+/// used to prevent values from being dropped. Optimization is required
+/// to elide the drop calls.
+///
+/// Since this is a compile-time check you cannot and need not test your
+/// code for potential drops as it will not compile.
 
 #[macro_export]
 macro_rules! prevent_drop_link {
@@ -129,6 +136,15 @@ macro_rules! prevent_drop_link {
     };
 }
 
+/// The abort strategy simply aborts the process. It is very user
+/// unfriendly, because it doesn't report a proper error message and it
+/// doesn't unwind like panic, but it is easier to spot in intermediate
+/// code or the binary. You can use it on a type if you guarantee that
+/// it will never be dropped but the compiler is unable to deduct this.
+///
+/// Since this is a run-time check you need to have proper tests to
+/// discover all potential drops.
+
 #[macro_export]
 macro_rules! prevent_drop_abort {
     ($T:ty) => {
@@ -140,6 +156,14 @@ macro_rules! prevent_drop_abort {
         }
     };
 }
+
+/// The panic strategy panics with a customizable error message only if
+/// the thread is not already panicking. The reason for this is that
+/// usually the original panic is more informative. If we are already
+/// panicking, leaking some resources is not as important.
+///
+/// Since this is a run-time check you need to have proper tests to
+/// discover all potential drops.
 
 #[macro_export]
 macro_rules! prevent_drop_panic {
