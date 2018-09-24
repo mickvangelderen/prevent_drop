@@ -147,7 +147,7 @@ macro_rules! prevent_drop_panic {
         prevent_drop_panic!(
             $T,
             concat!(
-                "Failed to explicitly drop an instance of ",
+                "Forgot to explicitly drop an instance of ",
                 stringify!($T),
                 "."
             )
@@ -228,7 +228,7 @@ mod tests {
     prevent_drop_panic!(PanicStrategy);
 
     #[test]
-    #[should_panic(expected = "Failed to explicitly drop an instance of PanicStrategy.")]
+    #[should_panic(expected = "Forgot to explicitly drop an instance of PanicStrategy.")]
     fn prevent_drop_panic_panics() {
         let x = PanicStrategy;
         ::std::mem::drop(x);
