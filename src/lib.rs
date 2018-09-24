@@ -21,11 +21,15 @@
 //! Something called linear types would help, see [this
 //! thread](https://users.rust-lang.org/t/prevent-drop-at-compile-time/20508)
 //! for more information, but that is not available as of September
-//! 2018. For now the `prevent_drop!` macro allows you to detect if a
+//! 2018\. For now the `prevent_drop!` macro allows you to detect if a
 //! value would be dropped at compile time if and only if the compiler
 //! optimization elides the drop function call. This means that you have
-//! to enable optimizations for it to work.
-//!
+//! to enable optimizations for it to work. Unfortunately, sometimes it
+//! is simply impossible for the compiler to remove the drop calls which
+//! means `prevent_drop` will report a false positive. Try to
+//! restructure your code so you can take ownership of the values that
+//! you are dropping. Alternatively, consider falling back to a run-time
+//! check.
 //!
 //! ## Example
 //!
@@ -83,7 +87,7 @@
 //! builds and tests you can use the following. Perhaps you need a
 //! `opt-level = 2` before the compiler elides drop calls.
 //!
-//! ```
+//! ```ignore
 //! [profile.dev]
 //! opt-level = 1
 //!
@@ -91,47 +95,108 @@
 //! opt-level = 1
 //! ```
 //!
-//! Alternatively, you can enable the `abort` feature. This will make
-//! `prevent_drop!` abort the process at run time instead of yielding a
-//! compile error. This can be useful to figure out where drop is being
-//! called through debugging. It requires you to find a case where this
-//! code actually executes though!
+//! Alternatively, you can enable the either the `abort` or the `panic`
+//! feature. Like the names suggest this will make `prevent_drop!` use
+//! `prevent_drop_abort!` or `prevent_drop_panic!` respectively. To set the strategy to panic for example, edit your `Cargo.toml` like this:
+//!
+//! ```ignore
+//! [dependencies.prevent_drop]
+//! version = "..."
+//! features = ["panic"]
+//! ```
+//!
+//! This can be useful to figure out where drop is being called through
+//! debugging. It does mean you need to figure out how to get your
+//! application to actually perform the drop.
 
 #![doc(html_root_url = "https://docs.rs/prevent_drop")]
 #![deny(missing_docs)]
 #![cfg_attr(test, deny(warnings))]
 
 #[macro_export]
-macro_rules! prevent_drop {
+macro_rules! prevent_drop_link {
     ($T:ty, $label:ident) => {
-        #[cfg(opt_level_gt_0)]
         extern "C" {
             fn $label();
         }
 
-        #[cfg(opt_level_gt_0)]
         impl Drop for $T {
             #[inline]
             fn drop(&mut self) {
                 unsafe { $label() };
             }
         }
+    };
+}
 
-        #[cfg(all(not(opt_level_gt_0), abort))]
+#[macro_export]
+macro_rules! prevent_drop_abort {
+    ($T:ty) => {
         impl Drop for $T {
             #[inline]
             fn drop(&mut self) {
                 ::std::process::abort();
             }
         }
+    };
+}
 
-        #[cfg(all(not(opt_level_gt_0), not(abort)))]
+#[macro_export]
+macro_rules! prevent_drop_panic {
+    ($T:ty) => {
+        prevent_drop_panic!(
+            $T,
+            concat!(
+                "Failed to explicitly drop an instance of ",
+                stringify!($T),
+                "."
+            )
+        );
+    };
+    ($T:ty, $msg:expr) => {
         impl Drop for $T {
             #[inline]
             fn drop(&mut self) {
-                compile_error!("`prevent_drop!` requires you to enable optimizations.");
+                if ::std::thread::panicking() == false {
+                    panic!($msg);
+                }
             }
         }
+    };
+}
+
+#[cfg(all(abort, panic))]
+compile_error!("You cannot use both the abort and the panic strategies at the same time. Choose one or the other.");
+
+#[cfg(opt_level_gt_0)]
+#[macro_export]
+macro_rules! prevent_drop {
+    ($T:ty, $label:ident) => {
+        prevent_drop_link!($T, $label);
+    };
+}
+
+#[cfg(all(not(opt_level_gt_0), abort, not(panic)))]
+#[macro_export]
+macro_rules! prevent_drop {
+    ($T:ty, $label:ident) => {
+        prevent_drop_abort!($T, $label);
+    };
+}
+
+#[cfg(all(not(opt_level_gt_0), not(abort), panic))]
+#[macro_export]
+macro_rules! prevent_drop {
+    ($T:ty, $label:ident) => {
+        prevent_drop_panic!($T, $label);
+    };
+}
+
+#[cfg(all(not(opt_level_gt_0), not(abort), not(panic)))]
+#[macro_export]
+macro_rules! prevent_drop {
+    ($T:ty, $label:ident) => {
+        compile_error!("The `prevent_drop!` macro requires you to enable optimizations or to set the `strategy` feature.")
     };
 }
 
@@ -155,5 +220,31 @@ mod tests {
         let c = Context;
         let r = Resource;
         r.drop(&c);
+    }
+
+    #[derive(Debug)]
+    struct PanicStrategy;
+
+    prevent_drop_panic!(PanicStrategy);
+
+    #[test]
+    #[should_panic(expected = "Failed to explicitly drop an instance of PanicStrategy.")]
+    fn prevent_drop_panic_panics() {
+        let x = PanicStrategy;
+        ::std::mem::drop(x);
+    }
+
+    #[test]
+    #[should_panic(expected = "Something else happened that I need to know about!")]
+    #[allow(unreachable_code, unused_variables)]
+    fn prevent_drop_panic_does_not_panic_while_panicking() {
+        let x = PanicStrategy;
+        panic!("Something else happened that I need to know about!");
+        ::std::mem::drop(x);
+    }
+
+    #[test]
+    fn prevent_drop_panic_does_not_panic_if_value_is_dropped() {
+        let _ = ::std::mem::ManuallyDrop::new(PanicStrategy);
     }
 }
