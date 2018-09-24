@@ -111,6 +111,9 @@
 #![deny(missing_docs)]
 #![cfg_attr(test, deny(warnings))]
 
+/// Implement Drop for a type that will not compile if it
+/// gets called.
+///
 /// This is the default strategy. It declares an `extern` function that
 /// should not have an implementation, causing the linker to emit an
 /// error. Either `std::mem::ManuallyDrop` or `std::mem::forget` can be
@@ -136,6 +139,8 @@ macro_rules! prevent_drop_link {
     };
 }
 
+/// Implement Drop for a type that will abort if it gets called.
+///
 /// The abort strategy simply aborts the process. It is very user
 /// unfriendly, because it doesn't report a proper error message and it
 /// doesn't unwind like panic, but it is easier to spot in intermediate
@@ -157,6 +162,8 @@ macro_rules! prevent_drop_abort {
     };
 }
 
+/// Implement Drop for a type that will panic if it gets called.
+///
 /// The panic strategy panics with a customizable error message only if
 /// the thread is not already panicking. The reason for this is that
 /// usually the original panic is more informative. If we are already
@@ -202,6 +209,15 @@ macro_rules! prevent_drop {
 
 #[cfg(all(not(feature = "abort"), not(feature = "panic"), not(opt_level_gt_0)))]
 #[macro_export]
+
+/// Implement Drop for a type so that instances of it cannot
+/// be dropped.
+///
+/// By default, this macro redirects to `prevent_drop_link`. If the
+/// `abort` feature is enabled it will redirect to `prevent_drop_abort.
+/// If the `panic` feature is enabled it will redirect to
+/// `prevent_drop_panic`.
+
 macro_rules! prevent_drop {
     ($T:ty, $label:ident) => {
         compile_error!("The `prevent_drop!` macro requires you to enable optimizations or to enable either the `abort` or the `panic` feature.")
