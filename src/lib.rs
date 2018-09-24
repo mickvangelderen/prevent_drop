@@ -152,11 +152,18 @@ macro_rules! prevent_drop_link {
 
 #[macro_export]
 macro_rules! prevent_drop_abort {
-    ($T:ty) => {
+    ($T:ty, $label:ident) => {
+        #[inline(never)]
+        #[no_mangle]
+        #[allow(non_snake_case, private_no_mangle_fns)]
+        pub fn $label() {
+            ::std::process::abort();
+        }
+
         impl Drop for $T {
             #[inline]
             fn drop(&mut self) {
-                ::std::process::abort();
+                $label();
             }
         }
     };
@@ -174,9 +181,10 @@ macro_rules! prevent_drop_abort {
 
 #[macro_export]
 macro_rules! prevent_drop_panic {
-    ($T:ty) => {
+    ($T:ty, $label:ident) => {
         prevent_drop_panic!(
             $T,
+            $label,
             concat!(
                 "Forgot to explicitly drop an instance of ",
                 stringify!($T),
@@ -184,13 +192,20 @@ macro_rules! prevent_drop_panic {
             )
         );
     };
-    ($T:ty, $msg:expr) => {
+    ($T:ty, $label:ident, $msg:expr) => {
+        #[inline(never)]
+        #[no_mangle]
+        #[allow(non_snake_case, private_no_mangle_fns)]
+        pub fn $label() {
+            if ::std::thread::panicking() == false {
+                panic!($msg);
+            }
+        }
+
         impl Drop for $T {
             #[inline]
             fn drop(&mut self) {
-                if ::std::thread::panicking() == false {
-                    panic!($msg);
-                }
+                $label();
             }
         }
     };
@@ -231,7 +246,7 @@ macro_rules! prevent_drop {
 #[macro_export]
 macro_rules! prevent_drop {
     ($T:ty, $label:ident) => {
-        prevent_drop_abort!($T);
+        prevent_drop_abort!($T, $label);
     };
     ($T:ty, $label:ident, $msg:expr) => {
         prevent_drop!($T, $label);
@@ -242,10 +257,10 @@ macro_rules! prevent_drop {
 #[macro_export]
 macro_rules! prevent_drop {
     ($T:ty, $label:ident) => {
-        prevent_drop_panic!($T);
+        prevent_drop_panic!($T, $label);
     };
     ($T:ty, $label:ident, $msg:expr) => {
-        prevent_drop_panic!($T, $msg);
+        prevent_drop_panic!($T, $label, $msg);
     };
 }
 
@@ -277,7 +292,7 @@ mod tests {
     #[derive(Debug)]
     struct PanicStrategy;
 
-    prevent_drop_panic!(PanicStrategy);
+    prevent_drop_panic!(PanicStrategy, forget_to_explicitly_drop_an_instance_of_PanicStrategy);
 
     #[test]
     #[should_panic(expected = "Forgot to explicitly drop an instance of PanicStrategy.")]
