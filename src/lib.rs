@@ -195,6 +195,9 @@ macro_rules! prevent_drop {
     ($T:ty, $label:ident) => {
         prevent_drop_link!($T, $label);
     };
+    ($T:ty, $label:ident, $msg:expr) => {
+        prevent_drop!($T, $label);
+    };
 }
 
 #[cfg(all(not(feature = "abort"), not(feature = "panic"), not(opt_level_gt_0)))]
@@ -202,6 +205,9 @@ macro_rules! prevent_drop {
 macro_rules! prevent_drop {
     ($T:ty, $label:ident) => {
         compile_error!("The `prevent_drop!` macro requires you to enable optimizations or to enable either the `abort` or the `panic` feature.")
+    };
+    ($T:ty, $label:ident, $msg:expr) => {
+        prevent_drop!($T, $label);
     };
 }
 
@@ -211,6 +217,9 @@ macro_rules! prevent_drop {
     ($T:ty, $label:ident) => {
         prevent_drop_abort!($T);
     };
+    ($T:ty, $label:ident, $msg:expr) => {
+        prevent_drop!($T, $label);
+    };
 }
 
 #[cfg(all(not(feature = "abort"), feature = "panic"))]
@@ -218,6 +227,9 @@ macro_rules! prevent_drop {
 macro_rules! prevent_drop {
     ($T:ty, $label:ident) => {
         prevent_drop_panic!($T);
+    };
+    ($T:ty, $label:ident, $msg:expr) => {
+        prevent_drop_panic!($T, $msg);
     };
 }
 
