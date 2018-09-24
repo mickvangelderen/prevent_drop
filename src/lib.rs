@@ -165,10 +165,7 @@ macro_rules! prevent_drop_panic {
     };
 }
 
-#[cfg(all(abort, panic))]
-compile_error!("You cannot use both the abort and the panic strategies at the same time. Choose one or the other.");
-
-#[cfg(opt_level_gt_0)]
+#[cfg(all(not(abort), not(panic), opt_level_gt_0))]
 #[macro_export]
 macro_rules! prevent_drop {
     ($T:ty, $label:ident) => {
@@ -176,15 +173,23 @@ macro_rules! prevent_drop {
     };
 }
 
-#[cfg(all(not(opt_level_gt_0), abort, not(panic)))]
+#[cfg(all(not(abort), not(panic), not(opt_level_gt_0)))]
 #[macro_export]
 macro_rules! prevent_drop {
     ($T:ty, $label:ident) => {
-        prevent_drop_abort!($T, $label);
+        compile_error!("The `prevent_drop!` macro requires you to enable optimizations or to enable either the `abort` or the `panic` feature.")
     };
 }
 
-#[cfg(all(not(opt_level_gt_0), not(abort), panic))]
+#[cfg(all(abort, not(panic)))]
+#[macro_export]
+macro_rules! prevent_drop {
+    ($T:ty, $label:ident) => {
+        prevent_drop_abort!($T);
+    };
+}
+
+#[cfg(all(not(abort), panic))]
 #[macro_export]
 macro_rules! prevent_drop {
     ($T:ty, $label:ident) => {
@@ -192,13 +197,8 @@ macro_rules! prevent_drop {
     };
 }
 
-#[cfg(all(not(opt_level_gt_0), not(abort), not(panic)))]
-#[macro_export]
-macro_rules! prevent_drop {
-    ($T:ty, $label:ident) => {
-        compile_error!("The `prevent_drop!` macro requires you to enable optimizations or to set the `strategy` feature.")
-    };
-}
+#[cfg(all(abort, panic))]
+compile_error!("You cannot use both the abort and the panic strategies at the same time. Choose one or the other.");
 
 #[cfg(test)]
 mod tests {
