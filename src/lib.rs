@@ -235,7 +235,7 @@ macro_rules! prevent_drop {
 
 macro_rules! prevent_drop {
     ($T:ty, $label:ident) => {
-        compile_error!("The `prevent_drop!` macro requires you to enable optimizations or to enable either the `abort` or the `panic` feature.")
+        compile_error!("The `prevent_drop!` macro requires you to enable optimizations or to enable either the `abort` or the `panic` feature.");
     };
     ($T:ty, $label:ident, $msg:expr) => {
         prevent_drop!($T, $label);
