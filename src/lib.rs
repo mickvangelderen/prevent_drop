@@ -82,15 +82,21 @@
 //! By default, `prevent_drop` only works when optimizations are
 //! enabled. The macro relies on optimizations to remove the drop
 //! function if it isn't called. To enable optimizations for debug
-//! builds and tests you can use the following. Perhaps you need a
-//! `opt-level = 2` before the compiler elides drop calls.
+//! builds and tests you can use the following.
 //!
 //! ```ignore
-//! [profile.dev]
-//! opt-level = 1
-//!
 //! [profile.test]
 //! opt-level = 1
+//! ```
+//!
+//! If that is not aggressive enough, you can try enabling maximum
+//! optimization as well as thin link time optimization.
+//!
+//! ```ignore
+//! [profile.test]
+//! opt-level = 3
+//! lto = "thin"
+//! incremental = false
 //! ```
 //!
 //! Alternatively, you can enable the either the `abort` or the `panic`
@@ -101,7 +107,7 @@
 //! ```ignore
 //! [dependencies.prevent_drop]
 //! version = "..."
-//! features = ["panic"]
+//! features = ["panic"] # or "abort"
 //! ```
 //!
 //! Review the documentation for the different prevent_drop strategies
